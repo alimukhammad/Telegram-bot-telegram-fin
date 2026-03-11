@@ -49,25 +49,33 @@ logger = logging.getLogger(__name__)
 
 HELP_TEXT = (
     "📊 *Kraken Signals & Alerts Bot*\n\n"
-    "*Watchlist commands*\n"
-    "  /setpair `<pair>` — add pair (e.g. BTCUSD)\n"
-    "  /delpair `<pair>` — remove pair\n"
-    "  /pairs — list your watchlist\n\n"
-    "*Alert commands*\n"
-    "  /setalert `<pair> price <op> <value> [cooldown=<s>]`\n"
-    "    e.g. `/setalert BTCUSD price > 70000`\n"
-    "    e.g. `/setalert BTCUSD price < 60000 cooldown=600`\n\n"
-    "  /setalert `<pair> change <op> <pct>% <window> [cooldown=<s>]`\n"
-    "    Windows: `5m` `15m` `1h`\n"
-    "    e.g. `/setalert ETHUSD change > 2% 15m`\n\n"
-    "  /alerts — list active alerts\n"
-    "  /delalert `<id>` — delete alert by ID\n\n"
-    "*Supported operators*: `>` `<` `>=` `<=`\n"
-    "*Default cooldown*: 300 s (5 min)"
+    "I can track crypto pairs and notify you when price rules are triggered.\n\n"
+    "*Quick start*\n"
+    "1) Add a pair: `/setpair BTCUSD`\n"
+    "2) Create an alert: `/setalert BTCUSD price > 70000`\n"
+    "3) View alerts: `/alerts`\n\n"
+    "*Watchlist*\n"
+    "• `/setpair <pair>` Add a pair (example: BTCUSD)\n"
+    "• `/delpair <pair>` Remove a pair\n"
+    "• `/pairs` Show your current watchlist\n\n"
+    "*Alerts*\n"
+    "• Price alert:\n"
+    "  `/setalert <pair> price <op> <value> [cooldown=<s>]`\n"
+    "  Example: `/setalert BTCUSD price < 60000 cooldown=600`\n\n"
+    "• Change alert:\n"
+    "  `/setalert <pair> change <op> <pct>% <window> [cooldown=<s>]`\n"
+    "  Windows: `5m`, `15m`, `1h`\n"
+    "  Example: `/setalert ETHUSD change > 2% 15m`\n\n"
+    "• `/alerts` Show active alerts\n"
+    "• `/delalert <id>` Delete an alert by ID\n\n"
+    "*Operators*: `>` `<` `>=` `<=`\n"
+    "*Default cooldown*: 300 seconds (5 minutes)\n\n"
+    "Tip: pair names are case-insensitive, so `btcusd` also works."
 )
 
 VALID_OPERATORS = {">", "<", ">=", "<="}
 VALID_WINDOWS = {"5m", "15m", "1h"}
+TOKEN_PATTERN = re.compile(r"^\d+:[A-Za-z0-9_-]{20,}$")
 
 
 def _parse_cooldown(tokens: list[str], default: int = 300) -> int:
@@ -76,6 +84,15 @@ def _parse_cooldown(tokens: list[str], default: int = 300) -> int:
         if m:
             return int(m.group(1))
     return default
+
+
+def _is_valid_telegram_token(token: str) -> bool:
+    t = token.strip()
+    if not t:
+        return False
+    if t.lower() in {"your_bot_token_here", "changeme", "replace_me"}:
+        return False
+    return TOKEN_PATTERN.fullmatch(t) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -327,8 +344,11 @@ def _make_polling_loop(application: Application) -> "Callable[[], Coroutine[Any,
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    if not config.TELEGRAM_BOT_TOKEN:
-        raise SystemExit("TELEGRAM_BOT_TOKEN is not set. Copy .env.example to .env and fill it in.")
+    if not _is_valid_telegram_token(config.TELEGRAM_BOT_TOKEN):
+        raise SystemExit(
+            "TELEGRAM_BOT_TOKEN is missing or invalid. "
+            "Set a real BotFather token in .env (format: <digits>:<secret>) and rerun."
+        )
 
     storage.init_db()
 
@@ -350,6 +370,8 @@ def main() -> None:
     app.post_init = _post_init  # type: ignore[method-assign]
 
     logger.info("Starting bot…")
+    # Python 3.14 no longer creates a default event loop implicitly.
+    asyncio.set_event_loop(asyncio.new_event_loop())
     app.run_polling(drop_pending_updates=True)
 
 

@@ -3,7 +3,8 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Prefer project-local .env values over previously exported shell variables.
+load_dotenv(override=True)
 
 # Required – validated at startup in bot.py
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
