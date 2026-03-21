@@ -67,6 +67,10 @@ _ALIAS_MAP: Dict[str, str] = {
     # Atom / Cosmos
     "ATOMUSD": "ATOMUSD",
     "ATOMUSDT": "ATOMUSDT",
+    # Paxos Gold (gold-backed token, 1 PAXG = 1 troy oz gold)
+    "PAXGUSD": "PAXGUSD",
+    "PAXGUSDT": "PAXGUSDT",
+    "GOLDUSD": "PAXGUSD",
 }
 
 
@@ -81,6 +85,74 @@ def resolve_pair(user_input: str) -> str:
     upper = user_input.upper().strip()
     return _ALIAS_MAP.get(upper, upper)
 
+
+# ---------------------------------------------------------------------------
+# Display helpers
+# ---------------------------------------------------------------------------
+
+_DISPLAY_MAP: Dict[str, str] = {
+    "XXBTZUSD": "BTC/USD",
+    "XBTUSDT": "BTC/USDT",
+    "XXBTZEUR": "BTC/EUR",
+    "XXBTZGBP": "BTC/GBP",
+    "XETHZUSD": "ETH/USD",
+    "ETHUSDT": "ETH/USDT",
+    "XETHZEUR": "ETH/EUR",
+    "XETHXXBT": "ETH/BTC",
+    "SOLUSD": "SOL/USD",
+    "SOLUSDT": "SOL/USDT",
+    "SOLEUR": "SOL/EUR",
+    "XXRPZUSD": "XRP/USD",
+    "XRPUSDT": "XRP/USDT",
+    "XXRPZEUR": "XRP/EUR",
+    "XLTCZUSD": "LTC/USD",
+    "LTCUSDT": "LTC/USDT",
+    "ADAUSD": "ADA/USD",
+    "ADAUSDT": "ADA/USDT",
+    "XDGUSD": "DOGE/USD",
+    "DOGEUSDT": "DOGE/USDT",
+    "DOTUSD": "DOT/USD",
+    "DOTUSDT": "DOT/USDT",
+    "LINKUSD": "LINK/USD",
+    "LINKUSDT": "LINK/USDT",
+    "AVAXUSD": "AVAX/USD",
+    "AVAXUSDT": "AVAX/USDT",
+    "MATICUSD": "MATIC/USD",
+    "MATICUSDT": "MATIC/USDT",
+    "UNIUSD": "UNI/USD",
+    "UNIUSDT": "UNI/USDT",
+    "ATOMUSD": "ATOM/USD",
+    "ATOMUSDT": "ATOM/USDT",
+    "PAXGUSD": "GOLD/USD",
+    "PAXGUSDT": "GOLD/USDT",
+}
+
+
+def friendly_name(kraken_pair: str) -> str:
+    """Return human-readable display name for a Kraken pair."""
+    return _DISPLAY_MAP.get(kraken_pair, kraken_pair)
+
+
+def fmt_price(price: float) -> str:
+    """Format price with dollar sign and appropriate decimals."""
+    if price >= 1:
+        return f"${price:,.2f}"
+    return f"${price:,.6f}"
+
+
+def fmt_cooldown(seconds: int) -> str:
+    """Format cooldown seconds to human-readable string."""
+    if seconds < 60:
+        return f"{seconds}s"
+    minutes = seconds // 60
+    if seconds % 60 == 0:
+        return f"{minutes} min"
+    return f"{minutes}m {seconds % 60}s"
+
+
+# ---------------------------------------------------------------------------
+# Kraken API
+# ---------------------------------------------------------------------------
 
 async def fetch_prices(pairs: list[str]) -> Dict[str, float]:
     """Fetch last-trade prices for *pairs* from the Kraken Ticker endpoint.

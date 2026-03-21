@@ -126,3 +126,19 @@ Full mapping is in `market_data.py`.  You can also pass a Kraken pair name direc
 - A background `asyncio.Task` polls Kraken every `POLL_INTERVAL` seconds, records prices to SQLite, and evaluates all alert rules.
 - Rolling-window change alerts compare the current price against the closest historical sample at `now − window`.
 - Price history older than 2 hours is pruned automatically.
+
+
+Quick Start
+
+cd into the project root
+
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements.txt
+
+set telegram token in .env TELEGRAM_BOT_TOKEN=your_real_token_from_botfather
+
+python bot.py
+
+in telegram bot open bot and send /start

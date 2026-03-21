@@ -5,10 +5,12 @@ notifications via a caller-supplied async callback.
 """
 from __future__ import annotations
 
+import html
 import logging
 import time
 from typing import Callable, Dict
 
+import market_data
 import storage
 
 logger = logging.getLogger(__name__)
@@ -32,13 +34,18 @@ def _compare(actual: float, operator: str, threshold: float) -> bool:
     return False
 
 
+def _html_op(operator: str) -> str:
+    """HTML-escape an operator string."""
+    return html.escape(operator)
+
+
 async def evaluate_alerts(
     prices: Dict[str, float],
     send_alert: Callable[[int, str], None],
 ) -> None:
     """Check every alert rule and fire *send_alert(user_id, message)* when triggered.
 
-    *prices* maps Kraken pair name → current price.
+    *prices* maps Kraken pair name -> current price.
     *send_alert* is an async callable.
     """
     alerts = storage.get_all_alerts()
@@ -65,14 +72,20 @@ async def evaluate_alerts(
 
         triggered = False
         message = ""
+        display = market_data.friendly_name(pair)
 
         if alert_type == "price":
             triggered = _compare(current_price, operator, value)
             if triggered:
+                exceed_amt = abs(current_price - value)
+                exceed_pct = abs((current_price - value) / value * 100)
                 message = (
-                    f"🔔 *Price alert* — *{pair}*\n"
-                    f"Current price: `{current_price:,.4f}`\n"
-                    f"Condition: {operator} `{value:,.4f}`"
+                    "🚨  <b>PRICE ALERT TRIGGERED</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"  <b>{display}</b>     {market_data.fmt_price(current_price)}\n\n"
+                    f"  Condition:   {_html_op(operator)} {market_data.fmt_price(value)}\n"
+                    f"  Exceeded by: {market_data.fmt_price(exceed_amt)} ({exceed_pct:.2f}%)\n\n"
+                    f"  ⏸️  Next alert in {market_data.fmt_cooldown(cooldown)}"
                 )
 
         elif alert_type == "change":
@@ -86,12 +99,15 @@ async def evaluate_alerts(
             pct_change = (current_price - past_price) / past_price * 100.0
             triggered = _compare(pct_change, operator, value)
             if triggered:
-                direction = "▲" if pct_change > 0 else "▼"
+                direction = "📈" if pct_change > 0 else "📉"
+                arrow = "+" if pct_change > 0 else ""
                 message = (
-                    f"📈 *Change alert* — *{pair}*\n"
-                    f"Change over {window}: `{direction}{abs(pct_change):.2f}%`\n"
-                    f"Condition: {operator} `{value:.2f}%`\n"
-                    f"Price: `{current_price:,.4f}`"
+                    "🚨  <b>CHANGE ALERT TRIGGERED</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"  <b>{display}</b>     {market_data.fmt_price(current_price)}\n\n"
+                    f"  {direction} {arrow}{pct_change:.2f}% in {window}\n"
+                    f"  Condition:   {_html_op(operator)} {value:.2f}%\n\n"
+                    f"  ⏸️  Next alert in {market_data.fmt_cooldown(cooldown)}"
                 )
 
         if triggered:
