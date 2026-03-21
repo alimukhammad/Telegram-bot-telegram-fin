@@ -8,3 +8,4 @@ venv/
 dist/
 build/
 .pytest_cache/
+cheat-sheet.txt
